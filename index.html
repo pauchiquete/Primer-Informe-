@@ -45,8 +45,6 @@
             background-clip: text;
         }
 
-
-
         .charts-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
@@ -103,6 +101,13 @@
             color: #bdc3c7;
         }
 
+        .loading {
+            color: #666;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+        }
+
         @media (max-width: 768px) {
             .charts-grid {
                 grid-template-columns: 1fr;
@@ -125,8 +130,6 @@
             <p>Visualizaciones interactivas con D3.js</p>
         </div>
 
-
-
         <div class="charts-grid">
             <div class="chart-container">
                 <div class="chart-title">🎯 Coordenadas del Mouse</div>
@@ -136,10 +139,13 @@
 
             <div class="chart-container">
                 <div class="chart-title">🖱️ Brush Interactivo</div>
-                <div class="chart-description">Mueve el mouse sobre el área izquierda para ver el efecto</div>
-                <div style="display: flex; gap: 10px;">
-                    <svg id="brush1" width="150" height="250" style="background:#f8f9fa; border: 2px solid #e9ecef; border-radius: 10px;"></svg>
-                    <svg id="brush2" width="150" height="250" style="background:#f8f9fa; border: 2px solid #e9ecef; border-radius: 10px;"></svg>
+                <div class="chart-description">Mueve el mouse sobre el área izquierda para ver el efecto (Datos del CSV)</div>
+                <div id="brush-loading" class="loading">Cargando datos del CSV...</div>
+                <div id="brush-charts" style="display: none;">
+                    <div style="display: flex; gap: 10px;">
+                        <svg id="brush1" width="150" height="250" style="background:#f8f9fa; border: 2px solid #e9ecef; border-radius: 10px;"></svg>
+                        <svg id="brush2" width="150" height="250" style="background:#f8f9fa; border: 2px solid #e9ecef; border-radius: 10px;"></svg>
+                    </div>
                 </div>
             </div>
 
@@ -168,14 +174,15 @@
     </div>
 
     <script>
-        // Datos de ejemplo para las estadísticas
+        // Datos de ejemplo para las estadísticas (para otros gráficos)
         const mockData = [
             {A: 50, B: 80}, {A: 120, B: 60}, {A: 200, B: 140}, {A: 80, B: 200},
             {A: 160, B: 40}, {A: 240, B: 180}, {A: 40, B: 120}, {A: 180, B: 100},
             {A: 100, B: 160}, {A: 220, B: 80}, {A: 60, B: 220}, {A: 140, B: 40}
         ];
 
-
+        // Variable global para almacenar los datos del CSV
+        let csvData = [];
 
         // 1. Coordenadas del mouse
         function createMouseCoords() {
@@ -199,11 +206,47 @@
                 });
         }
 
-        // 2. Brush interactivo
-        function createBrushVisualization() {
+        // 2. Cargar datos del CSV y crear brush interactivo
+        async function loadCSVAndCreateBrush() {
+            try {
+                // URL del archivo CSV en GitHub
+                const csvUrl = 'https://raw.githubusercontent.com/pauchiquete/Primer-Informe-/refs/heads/main/dense.csv';
+                
+                const data = await d3.csv(csvUrl, function(d) {
+                    return {
+                        A: +d.A,
+                        B: +d.B,
+                        C: +d.C
+                    };
+                });
+
+                csvData = data;
+                
+                // Ocultar loading y mostrar gráficos
+                document.getElementById('brush-loading').style.display = 'none';
+                document.getElementById('brush-charts').style.display = 'block';
+                
+                createBrushVisualization(csvData);
+                
+            } catch (error) {
+                console.error('Error cargando el CSV:', error);
+                document.getElementById('brush-loading').innerHTML = 'Error cargando datos del CSV. Usando datos de ejemplo.';
+                
+                // Usar datos de ejemplo en caso de error
+                setTimeout(() => {
+                    document.getElementById('brush-loading').style.display = 'none';
+                    document.getElementById('brush-charts').style.display = 'block';
+                    createBrushVisualization(mockData);
+                }, 2000);
+            }
+        }
+
+        // 2. Brush interactivo con datos del CSV
+        function createBrushVisualization(data) {
             const svg1 = d3.select("#brush1");
             const svg2 = d3.select("#brush2");
 
+            // Escalas de color
             const sc1 = d3.scaleLinear()
                 .domain([0, 50, 100])
                 .range(["#2ecc71", "#f1c40f", "#e74c3c"]);
@@ -211,10 +254,19 @@
                 .domain([0, 50, 100])
                 .range(["#2ecc71", "#f1c40f", "#3498db"]);
 
-            const cs1 = drawCircles(svg1, mockData, d => d.A/2, d => d.B/1.2, sc1);
-            const cs2 = drawCircles(svg2, mockData, d => d.A/2, d => d.B/1.2, sc2);
+            // Usar columnas A y B para posiciones, escalar para que quepan en el SVG
+            const scaleX = d3.scaleLinear()
+                .domain(d3.extent(data, d => d.A))
+                .range([10, 140]);
+            
+            const scaleY = d3.scaleLinear()
+                .domain(d3.extent(data, d => d.B))
+                .range([10, 240]);
 
-            svg1.call(installHandlers, mockData, cs1, cs2, sc1, sc2);
+            const cs1 = drawCircles(svg1, data, d => scaleX(d.A), d => scaleY(d.B), sc1);
+            const cs2 = drawCircles(svg2, data, d => scaleX(d.A), d => scaleY(d.B), sc2);
+
+            svg1.call(installHandlers, data, cs1, cs2, sc1, sc2);
 
             function drawCircles(svg, data, accX, accY, sc) {
                 const color = sc(100);
@@ -222,11 +274,13 @@
                     .data(data)
                     .enter()
                     .append("circle")
-                    .attr("r", 4)
+                    .attr("r", 3)
                     .attr("cx", accX)
                     .attr("cy", accY)
                     .attr("fill", color)
-                    .attr("fill-opacity", 0.7);
+                    .attr("fill-opacity", 0.7)
+                    .attr("stroke", "white")
+                    .attr("stroke-width", 0.5);
             }
 
             function installHandlers(svg, data, cs1, cs2, sc1, sc2) {
@@ -347,7 +401,7 @@
         function initDashboard() {
             setTimeout(() => {
                 createMouseCoords();
-                createBrushVisualization();
+                loadCSVAndCreateBrush(); // Cargar CSV y crear brush
                 createDragDrop();
                 createStaggerAnimation();
                 createLissajous();
