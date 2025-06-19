@@ -89,16 +89,16 @@
 
         .lissajous-container {
             grid-column: 1 / -1;
-            background: linear-gradient(135deg, #2c3e50, #34495e);
-            color: white;
+            background: white;
+            color: #2c3e50;
         }
 
         .lissajous-container .chart-title {
-            color: white;
+            color: #2c3e50;
         }
 
         .lissajous-container .chart-description {
-            color: #bdc3c7;
+            color: #666;
         }
 
         .loading {
@@ -168,7 +168,7 @@
             <div class="chart-container lissajous-container">
                 <div class="chart-title">🌀 Curvas de Lissajous</div>
                 <div class="chart-description">Animación matemática continua - Patrones hipnóticos</div>
-                <svg id="lissajous" width="350" height="350" style="background:#34495e; border: 2px solid #2c3e50; border-radius: 10px;"></svg>
+                <svg id="lissajous" width="350" height="350" style="background:#f8f9fa; border: 2px solid #e9ecef; border-radius: 10px;"></svg>
             </div>
         </div>
     </div>
@@ -388,7 +388,7 @@
                     .each(function() { this.bogus_opacity = 1.0; })
                     .attr("x1", prvX).attr("y1", prvY)
                     .attr("x2", crrX).attr("y2", crrY)
-                    .attr("stroke", "#00ff88").attr("stroke-width", 2);
+                    .attr("stroke", "#e74c3c").attr("stroke-width", 2);
 
                 prvX = crrX;
                 prvY = crrY;
